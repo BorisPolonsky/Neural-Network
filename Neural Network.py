@@ -121,8 +121,11 @@ class NeuralNetwork():
                         NewNodeError=self.getError(input_data,output_data,j)
                         print("Error of Node {}: {}".format(j,NewNodeError))
                         print("Delta of Error:",NodeError-NewNodeError)
-                        if NodeError>NewNodeError and NodeError-NewNodeError<node_error_epsilon:
-                            break
+                        if NodeError>NewNodeError:
+                            if NodeError-NewNodeError<node_error_epsilon:
+                                break
+                        else:
+                            print("Wrong Step")
                         NodeError=NewNodeError
                     grad = [0 for n_w in range(len(self.__Neurons[-2 - i]) + 1)]#gradient of Error with respect to generalizedweight.
                     for k in range(len(grad)):#Calculate gradient weight by weight(generalzide)
@@ -209,8 +212,8 @@ def test():
         Output.append([math.sin(input[0]+input[1])])
     b.fit(Input,Output,num_hidden_layer=0,max_step=300,node_error_epsilon=1e-6)
     print("Error: {}".format(b.getError(Input,Output)))
-    print(b.getOutput([1,1,1]))
-    del a
+    print(b.getOutput([1,1]))
+    del b
 if __name__ == "__main__":
     test()
 
