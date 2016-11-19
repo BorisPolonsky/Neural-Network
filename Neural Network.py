@@ -132,9 +132,11 @@ class NeuralNetwork():
                 return
             for j in range(len(self.__Neurons[-1 - i])):#Neuron by neuron/Output by output
                 NodeError = None
+                DampingFactor = 0
                 for step_count in range(max_step):#Step by step
                     if NodeError == None:
                         NodeError = self.getError(input_data,output_data,j)
+                        print("Error of Node {}: {}".format(j,NodeError))
                     else:
                         NewNodeError = self.getError(input_data,output_data,j)
                         print("Error of Node {}: {}".format(j,NewNodeError))
@@ -142,12 +144,11 @@ class NeuralNetwork():
                         if NodeError > NewNodeError:
                             if NodeError - NewNodeError < node_error_epsilon:
                                 break
+                            NodeError = NewNodeError
                         else:
-                            print("Wrong Step")
-                            StepBack=[-val for val in Generalizedweight]
-                            print("StepBack")
-                            self.__Neurons[-i - 1][j].adjustGeneralizedWeight(StepBack)
-                        NodeError = NewNodeError
+                            print("Wrong Step, rolling back.")
+                            self.__Neurons[-i - 1][j].adjustGeneralizedWeight(GeneralizedWeight)
+                            DampingFactor+=1
                     grad = [0 for n_w in range(len(self.__Neurons[-2 - i]) + 1)]#gradient of Error with respect to generalizedweight.
                     for k in range(len(grad)):#Calculate gradient weight by weight(generalzide)
                         for l in range(len(output_data)):#sample by sample
@@ -156,17 +157,17 @@ class NeuralNetwork():
                                 grad[k] = grad[k] + (self.__Neurons[-1 - i][j].getOutput() - output_data[l][j]) * 1 * self.__Neurons[-2 - i][k].getOutput()#falty?
                             else:#adjust threshold
                                 grad[k] = grad[k] + (self.__Neurons[-1 - i][j].getOutput() - output_data[l][j]) * 1 * 1
-                                #grad[k]=0
-                    Generalizedweight = self.__Neurons[-i - 1][j].getGeneralizedWeight()
+                    GeneralizedWeight = self.__Neurons[-i - 1][j].getGeneralizedWeight()
+                    NewGeneralizedWeight=[0]*len(grad)
                     for k in range(len(grad)):#Updae weight by weight(Generalized)
-                        Generalizedweight[k] = Generalizedweight[k] - self.__stepSize(step_count) * grad[k]
+                        NewGeneralizedWeight[k] = GeneralizedWeight[k] - self.__stepSize(DampingFactor) * grad[k]
                     #print("New weight:",Generalizedweight[:-1])
-                    #print("New threshold",Generalizedweight[-1])
-                    self.__Neurons[-i - 1][j].adjustGeneralizedWeight(Generalizedweight)
+                    #print("New threshold:",Generalizedweight[-1])
+                    self.__Neurons[-i - 1][j].adjustGeneralizedWeight(NewGeneralizedWeight)
 
     def __stepSize(self,n):
-        #return 0.02*math.exp(-5*n)
-        return 0.005
+        return 1 * math.exp(-2 * n)
+        #return 0.005
 
     def setInput(self,data):
         if len(data) == len(self.__Neurons[0]):
@@ -224,7 +225,7 @@ def test():
         Output.append([input[0] + input[1] + input[2] + 10,input[1] + input[2] + 20,input[2] + 30])
     a.fit(Input,Output,num_hidden_layer=0,max_step=300,node_error_epsilon=1e-6)
     print("Error: {}".format(a.getError(Input,Output)))
-    print(a.getOutput([-1,-1,-1]))
+    print(a.getOutput([1,1,1]))
 
     #b = NeuralNetwork()
     #Input = [[random.random(),random.random()] for i in range(200)]
