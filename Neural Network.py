@@ -114,7 +114,7 @@ class NeuralNetwork():
     def __generate(self,Num_Input,Num_Output,Num_Hidden):
             self.__Neurons.append([Neuron("Input") for i in range(Num_Input)])
             for i in range(Num_Hidden):
-                self.__Neurons.append([Neuron(Type="Hidden",Input=[self.__Neurons[-1][:]],Threshold=random.random()) for i in range(10)])
+                self.__Neurons.append([Neuron(Type="Hidden",Input=self.__Neurons[-1][:],Threshold=random.random()) for i in range(10)])
             self.__Neurons.append([Neuron(Type="Output",Input=self.__Neurons[-1][:],Threshold=0) for i in range(Num_Output)])
 
 
@@ -122,11 +122,12 @@ class NeuralNetwork():
         if num_hidden_layer == None:
             num_hidden_layer = int(math.sqrt(len(input_data[0]))) + 5
 
-        num_hidden_layer = 0# algorithm for hidden layers to be implemented
+        #num_hidden_layer = 0# algorithm for hidden layers to be implemented
 
         self.__generate(len(input_data[0]),len(output_data[0]),num_hidden_layer)
         #learning algorithm when there's no hidden layer
-        for i in range(len(self.__Neurons) - 1):#Layer by layer
+        #for i in range(len(self.__Neurons) - 1):#Layer by layer
+        for i in range(1):#Change the Output layer Only
             if self.getError(input_data,output_data) < error:
                 return
             for j in range(len(self.__Neurons[-1 - i])):#Neuron by neuron/Output by output
@@ -143,6 +144,9 @@ class NeuralNetwork():
                                 break
                         else:
                             print("Wrong Step")
+                            StepBack=[-val for val in Generalizedweight]
+                            print("StepBack")
+                            self.__Neurons[-i - 1][j].adjustGeneralizedWeight(StepBack)
                         NodeError = NewNodeError
                     grad = [0 for n_w in range(len(self.__Neurons[-2 - i]) + 1)]#gradient of Error with respect to generalizedweight.
                     for k in range(len(grad)):#Calculate gradient weight by weight(generalzide)
