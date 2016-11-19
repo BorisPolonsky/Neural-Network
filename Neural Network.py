@@ -104,27 +104,26 @@ class Neuron():
 
 
     def __del__(self):
-        print("Bye")
+        print("An",self.__type,"Neuron says goodbye!")
 
 class NeuralNetwork():
     def __init__(self):
         self.__Neurons = []
 
 
-    def __generate(self,Num_Input,Num_Output,Num_Hidden):
+    def __generate(self,Num_Input,Num_Output,Num_Hidden_Layer,mean_size_hidden_layer):
             self.__Neurons.append([Neuron("Input") for i in range(Num_Input)])
-            for i in range(Num_Hidden):
-                self.__Neurons.append([Neuron(Type="Hidden",Input=self.__Neurons[-1][:],Threshold=random.random()) for i in range(10)])
+            for i in range(Num_Hidden_Layer):
+                self.__Neurons.append([Neuron(Type="Hidden",Input=self.__Neurons[-1][:],Threshold=random.random()) for i in range(mean_size_hidden_layer)])
             self.__Neurons.append([Neuron(Type="Output",Input=self.__Neurons[-1][:],Threshold=0) for i in range(Num_Output)])
 
 
-    def fit(self,input_data,output_data,num_hidden_layer=None,data_by_rows=True,test_data_ratio=0.2,max_step=200,node_error_epsilon=0.002,error=0.05):
+    def fit(self,input_data,output_data,num_hidden_layer=None,mean_size_hidden_layer=None,data_by_rows=True,test_data_ratio=0.2,max_step=200,node_error_epsilon=0.002,error=0.05):
         if num_hidden_layer == None:
             num_hidden_layer = int(math.sqrt(len(input_data[0]))) + 5
-
-        #num_hidden_layer = 0# algorithm for hidden layers to be implemented
-
-        self.__generate(len(input_data[0]),len(output_data[0]),num_hidden_layer)
+        if mean_size_hidden_layer==None:
+            mean_size_hidden_layer=int(math.sqrt(len(input_data[0])*len(output_data[0])))
+        self.__generate(len(input_data[0]),len(output_data[0]),num_hidden_layer,mean_size_hidden_layer)
         #learning algorithm when there's no hidden layer
         #for i in range(len(self.__Neurons) - 1):#Layer by layer
         for i in range(1):#Change the Output layer Only
@@ -223,10 +222,10 @@ def test():
     Output = []
     for input in Input:
         Output.append([input[0] + input[1] + input[2] + 10,input[1] + input[2] + 20,input[2] + 30])
-    a.fit(Input,Output,num_hidden_layer=0,max_step=300,node_error_epsilon=1e-6)
+    a.fit(Input,Output,num_hidden_layer=1,max_step=300,node_error_epsilon=1e-6,mean_size_hidden_layer=2)
     print("Error: {}".format(a.getError(Input,Output)))
     print(a.getOutput([1,1,1]))
-
+    del a
     #b = NeuralNetwork()
     #Input = [[random.random(),random.random()] for i in range(200)]
     #Output = []
