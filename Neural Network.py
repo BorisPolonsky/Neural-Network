@@ -281,10 +281,22 @@ class NeuralNetwork():
             return
         raise NeuronException
 
-    def getOutput(self,Input=None):
+    def getOutput(self,Input=None,LayerIndex=None):
+        """
+        Input[in]: the input of NeuralNetwork (e.g. input of input layer)
+        LayerIndex[in]: specify the layer(LayerIndex==0 suggests the input layer)
+        """
+        if LayerIndex==None:
+            LayerIndex=len(self.__Neurons)-1
         if Input != None:
             self.setInput(Input)
-        return [Node.getOutput() for Node in self.__Neurons[-1]]
+        ret=Input[:]
+        for i in range(LayerIndex+1):
+            if i==0:
+                ret=[Node.getOutput() for Node in self.__Neurons[i]]
+            else:
+                ret=[Node.getOutput(Input=ret) for Node in self.__Neurons[i]]
+        return ret
 
 
 
@@ -331,7 +343,7 @@ def test():
     Output = []
     for input in Input:
         Output.append([input[0] + input[1] + input[2] + 10,input[1] + input[2] + 20,input[2] + 30])
-    a.fit(Input,Output,num_hidden_layer=0,max_step=300,node_error_epsilon=1e-6,mean_size_hidden_layer=2)
+    a.fit(Input,Output,num_hidden_layer=2,max_step=100,node_error_epsilon=1e-6,mean_size_hidden_layer=2)
     print("Error: {}".format(a.getError(Input,Output)))
     print(a.getOutput([1,1,1]))
     del a
