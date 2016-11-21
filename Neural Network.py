@@ -196,14 +196,17 @@ class NeuralNetwork():
         if len(input_data)!=len(output_data):
             raise NeuronException
         #adjust input layer:
+        totalError=self.getError(input_data,output_data)
         for Epoch in range(100):
-            if self.getError(input_data,output_data) < error:
+            print("Epoch:{}".format(Epoch))
+            if totalError < error:
+                print("Convergence reached. \nTotal rms error:{}".format(totalError))
                 return
             #adjust weight ouf output layer
-            print("Adjusting output layer")
+            print("Adjusting output layer... ")
             for output_i in range(len(self.__Neurons[-1])):
                 Error = self.getError(input_data,output_data,output_i)
-                print("Node {} Error{}:".format(output_i,Error))
+                print("Node {} Error:{}".format(output_i,Error))
                 DampingFactor = 0
                 rb_count=0#the count of consequtive rollbacks
                 for step in range(max_step):
@@ -230,20 +233,21 @@ class NeuralNetwork():
                         Error = NewError
                         rb_count=0
                     else:
-                        print("Delta of Node Error{}:".format(NewError - Error))
-                        print("Over shooted.")
-                        print("Rolling back")
+                        #print("Delta of Node Error{}:".format(NewError - Error))
+                        #print("Over shooted.")
+                        #print("Rolling back")
                         self.__Neurons[-1][output_i].adjustGeneralizedWeight(GeneralizedWeight)
                         DampingFactor+=1
                         rb_count+=1
                         if rb_count>=6:
                             break
-            print("Error{}".format(self.getError(input_data,output_data)))
-                        
+            newTotalError=self.getError(input_data,output_data)
+            print("Error:{}".format(newTotalError))
+            
             #adjust weight ouf hidden layer
             if len(self.__Neurons)<3:
                 continue
-            print("Adjust Hidden layer.")
+            print("Adjust Hidden layer... ")
             for hidden_i in range(len(self.__Neurons[-2])):
                 Error = self.getError(input_data,output_data)
                 print("Error:{}".format(Error))
@@ -287,8 +291,11 @@ class NeuralNetwork():
                         rb_count+=1
                         if rb_count>=6:
                             break
-                print("Error:{}".format(self.getError(input_data,output_data)))
-
+                newTotalError=self.getError(input_data,output_data)
+                print("Error:{}".format(newTotalError))
+            
+            print("Delta of rms error during the epoch:{}".format(newTotalError-totalError))
+            totalError=newTotalError
                         
 
                 
@@ -307,7 +314,7 @@ class NeuralNetwork():
         outputQuery[sample_index][layer_index][output_index] returns a certain output given
         sample_index,layer_index,output_index
         """
-        InputBacup=self.getInput()#backup input
+        InputBackup=self.getInput()#backup input
         outputQuery=[[]for i in range(len(inputDataSet))]
         for sampleIndex in range(len(inputDataSet)):
             outputQuery[sampleIndex].append(self.getOutput(inputDataSet[sampleIndex],0))#log output of input layer
@@ -319,7 +326,7 @@ class NeuralNetwork():
                     Output2=self.getOutput(Input=inputDataSet[sampleIndex],LayerIndex=layerIndex)
                     if Output1!=Output2:
                         print("Falty")
-        self.setInput(InputBacup)#restore input
+        self.setInput(InputBackup)#restore input
         return outputQuery
 
     def __errorQuery(self,outputQuery,targetOutputDataset):
@@ -398,8 +405,8 @@ class NeuralNetwork():
     #def getMSSEError(self,InputData,OutputData,OutputIndex=None):
     def getError(self,InputData,OutputData,OutputIndex=None):
         """
-        Return the mean(with respect to the number of samples) of the sum of squares of errors. 
-        If OutputIndex==None, return the Error of the whole output, otherwise return the error of a specific output.
+        Return the rms error. 
+        If OutputIndex==None, return the rms error of the whole output, otherwise return the rms error of a specific output.
         Output Index starts from 0.
         """
         if len(InputData) != len(OutputData):
@@ -410,11 +417,13 @@ class NeuralNetwork():
                 Output = self.getOutput(InputData[i])
                 for j in range(len(Output)):
                     Error+=math.pow(Output[j] - OutputData[i][j],2)
-            Error = Error / len(InputData)
+            Error = Error / (len(InputData) * len(self.__Neurons[-1]))
+            Error = math.sqrt(Error)
         else:
             for i in range(len(InputData)):
                 Error+=math.pow(self.getOutput(InputData[i])[OutputIndex] - OutputData[i][OutputIndex],2)
             Error = Error / len(InputData)
+            Error = math.sqrt(Error)
         return Error
 
     def size(self):
@@ -433,26 +442,26 @@ class NeuronException(Exception):
         pass
 
 def test():
-    a = NeuralNetwork()
-    Input = [[random.random(),random.random(),random.random()] for i in range(30)]
-    Output = []
-    for input in Input:
-        Output.append([input[0] + input[1] + input[2] + 10,input[1] + input[2] + 20,input[2] + 30])
-    a.test_fit(Input,Output,num_hidden_layer=1,max_step=100,node_error_epsilon=1e-4,mean_size_hidden_layer=2)
-    print("Error: {}".format(a.getError(Input,Output)))
-    print(a.getOutput([1,1,1]))
-    print(a.getOutput(LayerIndex=-1))
-    del a
-    #b = NeuralNetwork()
-    #Input = [[random.random(),random.random()] for i in range(200)]
+    #a = NeuralNetwork()
+    #Input = [[random.random(),random.random(),random.random()] for i in range(30)]
     #Output = []
     #for input in Input:
-    #    Output.append([5*math.sin(input[0]+input[1])+5])
-    #b.test_fit(Input,Output,num_hidden_layer=1,mean_size_hidden_layer=3,max_step=30,node_error_epsilon=1e-4)
-    #print("Error: {}".format(b.getError(Input,Output)))
-    #print(b.getOutput([1,1]))
-    #print(math.sin(1+1))
-    #del b
+    #    Output.append([input[0] + input[1] + input[2] + 10,input[1] + input[2] + 20,input[2] + 30])
+    #a.test_fit(Input,Output,num_hidden_layer=1,max_step=2,node_error_epsilon=1e-3,mean_size_hidden_layer=2)
+    #print("Error: {}".format(a.getError(Input,Output)))
+    #print(a.getOutput([1,1,1]))
+    #print(a.getOutput(LayerIndex=-1))
+    #del a
+    b = NeuralNetwork()
+    Input = [[random.random(),random.random()] for i in range(200)]
+    Output = []
+    for input in Input:
+        Output.append([5*math.sin(input[0]+input[1])])
+    b.test_fit(Input,Output,num_hidden_layer=1,max_step=30,node_error_epsilon=1e-4)
+    print("Error: {}".format(b.getError(Input,Output)))
+    print(b.getOutput([1,1]))
+    print(math.sin(1+1))
+    del b
 if __name__ == "__main__":
     test()
 
