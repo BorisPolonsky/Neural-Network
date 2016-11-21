@@ -4,7 +4,6 @@ A neural network (temporarily a perceptron) that can now approximate linear func
 * Bug huanted.
 * Ugly structure.
 * Unsatisfatory computational cost.
-* Algorithm for hidden layers to be implemented. 
 * Data validation to be implemented. 
-* Measures to approximate non-linear functions to be implemented.
+* Overfitting to be dealt with
 * Other possible issues.
