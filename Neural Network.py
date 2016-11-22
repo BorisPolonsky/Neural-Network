@@ -34,7 +34,7 @@ class Neuron():
                 self.__input = Input[:]
                 self.__threshold = float(Threshold)
                 if Weight == None:
-                    self.__weight = [random.random() for i in range(len(Input))]
+                    self.__weight = [2*random.random()-1 for i in range(len(Input))]
                 elif len(Weight) != len(Input):
                     self.__weight = [0 for i in range(len(Input))]
                     raise NeuronException
@@ -60,13 +60,22 @@ class Neuron():
 
 
     def adjustGeneralizedWeight(self,GeneralizedWeight):#Generalized weight=weight+[threshold]
-        if len(GeneralizedWeight) != (len(self.__weight) + 1):
-            raise NeuronException
-        self.adjustWeight(GeneralizedWeight[:-1])
-        self.adjustThreshold(GeneralizedWeight[-1])
+        if self.__type=="Input":
+            if len(GeneralizedWeight)!=2:
+                raise NeuronException
+            self.adjustWeight(GeneralizedWeight[0]) 
+            self.adjustThreshold(GeneralizedWeight[1])
+        else:
+            if len(GeneralizedWeight) != (len(self.__weight) + 1):
+                raise NeuronException
+            self.adjustWeight(GeneralizedWeight[:-1])
+            self.adjustThreshold(GeneralizedWeight[-1])
 
     def getWeight(self):
-        return self.__weight[:]
+        if self.__type=="Input":
+            return self.__weight
+        else:
+            return self.__weight[:]
 
     def getThreshold(self):
         return self.__threshold
@@ -125,7 +134,7 @@ class Neuron():
 
 
     def __del__(self):
-        print("An",self.__type,"Neuron says goodbye!")
+        print("A" if self.__type=="Hidden" else "An",self.__type,"Neuron says goodbye!")
 
 class NeuralNetwork():
     def __init__(self):
@@ -139,6 +148,11 @@ class NeuralNetwork():
                     raise NeuronException
                 self.__Neurons.append([Neuron(Type="Hidden",Input=self.__Neurons[-1][:],Threshold=random.random()) for j in range(mean_size_hidden_layer)])
             self.__Neurons.append([Neuron(Type="Output",Input=self.__Neurons[-1][:],Threshold=0) for i in range(Num_Output)])
+
+    def adjustAll(self,generalizedWeightQuery):
+        for layer_i in range(len(generalizedWeightQuery)):
+            for neuron_i in range(len(generalizedWeightQuery[layer_i])):
+                self.__Neurons[layer_i][neuron_i].adjustGeneralizedWeight(generalizedWeightQuery[layer_i][neuron_i])
 
 
     def fit(self,input_data,output_data,num_hidden_layer=None,mean_size_hidden_layer=None,data_by_rows=True,test_data_ratio=0.2,max_step=200,node_error_epsilon=0.002,error=0.05):
@@ -315,6 +329,7 @@ class NeuralNetwork():
                 return
             outputQuery=self.__outputQuery(input_data)
             errorQuery=self.__errorQuery(outputQuery,output_data)
+            generalizedWeightQuery=self.__generalizedweightQuery()#Preserve the network in case of overflow or overstep
             for layer_i in range(len(self.__Neurons)-1,0,-1):
                 for neuron_i in range(len(self.__Neurons[layer_i])):
                     GeneralizedWeight=self.__Neurons[layer_i][neuron_i].getGeneralizedWeight()
@@ -345,11 +360,12 @@ class NeuralNetwork():
                 if totalError-newTotalError<error_epsilon:
                     print("Convergence reached. \nDelta:{} \nError:{} ".format(totalError-newTotalError,newTotalError))
                     return
+                #DampingFactor=0
+                totalError=newTotalError
             else:
                 DampingFactor+=1
                 print("DampingFactor:{}".format(DampingFactor))
-                ...#rollback to be implemented
-            totalError=newTotalError
+                self.adjustAll(generalizedWeightQuery)#roll back
         print("Maximum epoch reached. Error:{} ".format(totalError))
 
     def __outputQuery(self,inputDataSet):
@@ -422,8 +438,12 @@ class NeuralNetwork():
                 bpError[bp_i]+=Error[error_i] * self.__Neurons[layerIndex][error_i].getWeight()[bp_i]
         return bpError
 
-
-
+    def __generalizedweightQuery(self):
+        generalizedweightQuery=[[]for i in range(len(self.__Neurons))]
+        for layer_i in range(len(generalizedweightQuery)):
+            for neuron_i in range(len(self.__Neurons[layer_i])):
+                generalizedweightQuery[layer_i].append(self.__Neurons[layer_i][neuron_i].getGeneralizedWeight())
+        return generalizedweightQuery
 
 
     def __stepSize(self,n):
@@ -543,7 +563,7 @@ def test():
     Output = []
     for input in Input:
         Output.append([0.5*math.exp(input[0])])
-    c.test_fit2(Input,Output,num_hidden_layer=1,max_step=300,error_epsilon=1e-8)
+    c.test_fit2(Input,Output,num_hidden_layer=2,mean_size_hidden_layer=5,max_step=300,error_epsilon=1e-8)
     print("Error:{}".format(c.getError(Input,Output)))
     print("Test training data: ")
     print("Test input:{}".format(Input[0]))
