@@ -1,8 +1,12 @@
 ﻿import random
 import math
 import copy
-def sigmoid(inX):  
-    return 1.0 / (1 + math.exp(-inX))
+def sigmoid(inX):
+    try:
+        denomiator=(1.0 + math.exp(-inX))
+    except OverflowError:
+        return 1.0-sigmoid(-inX)
+    return 1.0 / denomiator
 
 
 class Neuron():
@@ -559,20 +563,29 @@ def test():
 #    print("Real output:{}".format(math.sin(1+1)))
 #    del b
     c = NeuralNetwork()
-    Input = [[random.random()] for i in range(200)]
+    Input = [[random.random()*10-5] for i in range(200)]
     Output = []
     for input in Input:
-        Output.append([0.5*math.exp(input[0])])
-    c.test_fit2(Input,Output,num_hidden_layer=2,mean_size_hidden_layer=5,max_step=300,error_epsilon=1e-8)
+        Output.append([input[0]**2])
+    c.test_fit2(Input,Output,num_hidden_layer=1,mean_size_hidden_layer=10,max_step=400,error_epsilon=1e-8)
     print("Error:{}".format(c.getError(Input,Output)))
-    print("Test training data: ")
-    print("Test input:{}".format(Input[0]))
-    print("Network output:{}".format(c.getOutput(Input[0])))
-    print("Real output:{}".format(Output[0]))
-    print("Test unseen data: ")
-    print("Test input:{}".format([0]))
-    print("Network output:{}".format(c.getOutput([0])))
-    print("Real output:{}".format([0.5*math.exp(0)]))
+    import numpy as np
+    import seaborn as sns
+    from matplotlib import pyplot as plt
+    Input = [[i*0.01-5] for i in range(1000)]
+    Output = []
+    netOutput=[]
+    for input in Input:
+        Output.append([input[0]**2])
+        netOutput.append(c.getOutput(input)[0])
+    npInput=np.array(Input);
+    npRealOutput=np.array(Output)
+    npNetOutput=np.array(netOutput)
+    plt.figure(figsize=(8,5))
+    plt.plot(npInput,npRealOutput, label='npRealOutput')
+    plt.plot(npInput,npNetOutput, label='npNetOutput')
+    plt.legend()
+    plt.show()
     del c
 if __name__ == "__main__":
 #if __name__ == "__main__":
