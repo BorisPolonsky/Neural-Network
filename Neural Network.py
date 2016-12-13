@@ -8,6 +8,21 @@ def sigmoid(inX):
         return 1.0-sigmoid(-inX)
     return 1.0 / denomiator
 
+def Norm(vector):
+    """
+    vector[in] a vector represented as list/tuple or a number represented as int/float.
+    return 2-norm of the vector
+    """
+    try:
+        Norm=float(vector)
+        if Norm<0:
+            Norm=-Norm
+    except TypeError:
+        Norm=0
+        for entry in vector:
+            Norm+=entry**2
+        Norm=math.sqrt(Norm)
+    return Norm
 
 class Neuron():
     def __init__(self,Type="Input",Input=None,Weight=None,Threshold=0):
@@ -152,11 +167,21 @@ class NeuralNetwork():
                     raise NeuronException
                 self.__Neurons.append([Neuron(Type="Hidden",Input=self.__Neurons[-1][:],Threshold=random.random()) for j in range(mean_size_hidden_layer)])
             self.__Neurons.append([Neuron(Type="Output",Input=self.__Neurons[-1][:],Threshold=0) for i in range(Num_Output)])
+            
 
     def adjustAll(self,generalizedWeightQuery):
         for layer_i in range(len(generalizedWeightQuery)):
             for neuron_i in range(len(generalizedWeightQuery[layer_i])):
                 self.__Neurons[layer_i][neuron_i].adjustGeneralizedWeight(generalizedWeightQuery[layer_i][neuron_i])
+
+
+    def generalizedWeightQuery(self):
+        WeightQuery=[]
+        for layer in self.__Neurons:
+            WeightQuery.append([])
+            for neuron in layer:
+                WeightQuery[-1].append(neuron.getGeneralizedWeight())
+        return WeightQuery
 
 
     def fit(self,input_data,output_data,num_hidden_layer=None,mean_size_hidden_layer=None,data_by_rows=True,test_data_ratio=0.2,max_step=200,node_error_epsilon=0.002,error=0.05):
@@ -322,6 +347,7 @@ class NeuralNetwork():
         if mean_size_hidden_layer == None:
             mean_size_hidden_layer = int(math.sqrt(len(input_data[0]) + len(output_data[0]))) + 5
         self.__generate(len(input_data[0]),len(output_data[0]),num_hidden_layer,mean_size_hidden_layer)
+        print(self.generalizedWeightQuery())
         if len(input_data)!=len(output_data):
             raise NeuronException
         #adjust input layer:
@@ -370,7 +396,7 @@ class NeuralNetwork():
                 DampingFactor+=1
                 print("DampingFactor:{}".format(DampingFactor))
                 self.adjustAll(generalizedWeightQuery)#roll back
-        print("Maximum epoch reached. Error:{} ".format(totalError))
+        print("Epoch limit reached. \nError:{} ".format(totalError))
 
     def __outputQuery(self,inputDataSet):
         """
@@ -451,7 +477,7 @@ class NeuralNetwork():
 
 
     def __stepSize(self,n):
-        return 0.05 * math.exp(-2 * n)
+        return 1 * math.exp(-0.5 * n)
         #return 0.005
 
     def setInput(self,data):
@@ -563,11 +589,12 @@ def test():
 #    print("Real output:{}".format(math.sin(1+1)))
 #    del b
     c = NeuralNetwork()
-    Input = [[random.random()*10-5] for i in range(200)]
+    Input = [[i*1-5] for i in range(10)]
     Output = []
     for input in Input:
-        Output.append([input[0]**2])
-    c.test_fit2(Input,Output,num_hidden_layer=1,mean_size_hidden_layer=10,max_step=400,error_epsilon=1e-8)
+        Output.append([math.exp(input[0])-20])
+    c.test_fit2(Input,Output,max_step=200,num_hidden_layer=1,mean_size_hidden_layer=20,error_epsilon=1e-8,error=1e-2)
+    print(c.generalizedWeightQuery())
     print("Error:{}".format(c.getError(Input,Output)))
     import numpy as np
     import seaborn as sns
@@ -576,7 +603,7 @@ def test():
     Output = []
     netOutput=[]
     for input in Input:
-        Output.append([input[0]**2])
+        Output.append([math.exp(input[0])-20])
         netOutput.append(c.getOutput(input)[0])
     npInput=np.array(Input);
     npRealOutput=np.array(Output)
@@ -588,7 +615,6 @@ def test():
     plt.show()
     del c
 if __name__ == "__main__":
-#if __name__ == "__main__":
     test()
 
 
