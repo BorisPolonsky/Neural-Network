@@ -24,6 +24,17 @@ def Norm(vector):
         Norm=math.sqrt(Norm)
     return Norm
 
+def minmax(samples):
+    min=samples[0][:]
+    max=samples[0][:]
+    for sample in samples:
+        for i in range(len(sample)):
+            if sample[i]<min[i]:
+                min[i]=sample[i]
+            if sample[i]>max[i]:
+                max[i]=sample[i]
+    return min,max
+
 class Neuron():
     def __init__(self,Type="Input",Input=None,Weight=None,Threshold=0):
         """
@@ -165,7 +176,7 @@ class NeuralNetwork():
             for i in range(Num_Hidden_Layer):
                 if mean_size_hidden_layer<=0:
                     raise NeuronException
-                self.__Neurons.append([Neuron(Type="Hidden",Input=self.__Neurons[-1][:],Threshold=random.random()) for j in range(mean_size_hidden_layer)])
+                self.__Neurons.append([Neuron(Type="Hidden",Input=self.__Neurons[-1][:],Threshold=0) for j in range(mean_size_hidden_layer)])
             self.__Neurons.append([Neuron(Type="Output",Input=self.__Neurons[-1][:],Threshold=0) for i in range(Num_Output)])
             
 
@@ -589,21 +600,21 @@ def test():
 #    print("Real output:{}".format(math.sin(1+1)))
 #    del b
     c = NeuralNetwork()
-    Input = [[i*1-5] for i in range(10)]
+    Input = [[i*0.1-5] for i in range(100)]
     Output = []
     for input in Input:
-        Output.append([math.exp(input[0])-20])
-    c.test_fit2(Input,Output,max_step=200,num_hidden_layer=1,mean_size_hidden_layer=20,error_epsilon=1e-8,error=1e-2)
+        Output.append([10*math.exp(-(input[0])**2)])
+    c.test_fit2(Input,Output,max_step=500,num_hidden_layer=2,mean_size_hidden_layer=10,error_epsilon=1e-8,error=1e-2)
     print(c.generalizedWeightQuery())
     print("Error:{}".format(c.getError(Input,Output)))
     import numpy as np
     import seaborn as sns
     from matplotlib import pyplot as plt
-    Input = [[i*0.01-5] for i in range(1000)]
+    #Input = [[i*0.01-5] for i in range(1000)]
     Output = []
     netOutput=[]
     for input in Input:
-        Output.append([math.exp(input[0])-20])
+        Output.append([10*math.exp(-(input[0])**2)])
         netOutput.append(c.getOutput(input)[0])
     npInput=np.array(Input);
     npRealOutput=np.array(Output)
