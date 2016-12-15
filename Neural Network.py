@@ -176,7 +176,8 @@ class NeuralNetwork():
             for i in range(Num_Hidden_Layer):
                 if mean_size_hidden_layer<=0:
                     raise NeuronException
-                self.__Neurons.append([Neuron(Type="Hidden",Input=self.__Neurons[-1][:],Threshold=0) for j in range(mean_size_hidden_layer)])
+                weight_init=[1.0/math.sqrt(len(self.__Neurons[-1]))*(random.random()*2-1) for i in range(len(self.__Neurons[-1]))]
+                self.__Neurons.append([Neuron(Type="Hidden",Input=self.__Neurons[-1][:],Weight=weight_init,Threshold=0) for j in range(mean_size_hidden_layer)])
             self.__Neurons.append([Neuron(Type="Output",Input=self.__Neurons[-1][:],Threshold=0) for i in range(Num_Output)])
             
 
