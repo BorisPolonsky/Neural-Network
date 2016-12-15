@@ -177,6 +177,8 @@ class NeuralNetwork():
                 if mean_size_hidden_layer<=0:
                     raise NeuronException
                 weight_init=[1.0/math.sqrt(len(self.__Neurons[-1]))*(random.random()*2-1) for i in range(len(self.__Neurons[-1]))]
+                #W~U[-1/sqrt(n),1/sqrt(n)], U is a uniform distribution. n is the number neuron in the last layer(e.g number of input in this neuron). 
+                #<Understanding the difficulty of training deep feedforward neural networks> by Xavier Glorot & Yoshua Bengio
                 self.__Neurons.append([Neuron(Type="Hidden",Input=self.__Neurons[-1][:],Weight=weight_init,Threshold=0) for j in range(mean_size_hidden_layer)])
             self.__Neurons.append([Neuron(Type="Output",Input=self.__Neurons[-1][:],Threshold=0) for i in range(Num_Output)])
             
