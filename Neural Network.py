@@ -24,16 +24,7 @@ def Norm(vector):
         Norm=math.sqrt(Norm)
     return Norm
 
-def minmax(samples):
-    min=samples[0][:]
-    max=samples[0][:]
-    for sample in samples:
-        for i in range(len(sample)):
-            if sample[i]<min[i]:
-                min[i]=sample[i]
-            if sample[i]>max[i]:
-                max[i]=sample[i]
-    return min,max
+
 
 class Neuron():
     def __init__(self,Type="Input",Input=None,Weight=None,Threshold=0):
@@ -159,7 +150,7 @@ class Neuron():
         else:#Get output for input layer
             if Input == None:
                 Input = self.__input
-            return self.__input * self.__weight + self.__threshold
+            return float(Input) * self.__weight + self.__threshold
                 
 
 
@@ -182,6 +173,33 @@ class NeuralNetwork():
                 self.__Neurons.append([Neuron(Type="Hidden",Input=self.__Neurons[-1][:],Weight=weight_init,Threshold=0) for j in range(mean_size_hidden_layer)])
             self.__Neurons.append([Neuron(Type="Output",Input=self.__Neurons[-1][:],Threshold=0) for i in range(Num_Output)])
             
+    def __rescaleInput(self,samples):
+        """
+        Adjust the weights and thresholds in input layers to rescales the input of the network. 
+        samples[in]:list of input vectors
+        """
+        min,max=self.__minmax(samples)
+        #The input layer rescales each imput. Each output of input layer will be ranged from -5 to 5. 
+        for input_i in range(len(self.__Neurons[0])):
+            scale=max[input_i]-min[input_i]
+            mean=(max[input_i]+min[input_i])/2.0
+            if scale==0:
+                self.__Neurons[0][input_i].adjustGeneralizedWeight([1,-mean])
+            else:
+                self.__Neurons[0][input_i].adjustGeneralizedWeight([10.0/scale,-mean*10.0/scale])
+
+
+    def __minmax(self,samples):
+        min=samples[0][:]
+        max=samples[0][:]
+        for sample in samples:
+            for i in range(len(sample)):
+                if sample[i]<min[i]:
+                    min[i]=sample[i]
+                if sample[i]>max[i]:
+                    max[i]=sample[i]
+        return min,max
+
 
     def adjustAll(self,generalizedWeightQuery):
         for layer_i in range(len(generalizedWeightQuery)):
@@ -361,6 +379,7 @@ class NeuralNetwork():
         if mean_size_hidden_layer == None:
             mean_size_hidden_layer = int(math.sqrt(len(input_data[0]) + len(output_data[0]))) + 5
         self.__generate(len(input_data[0]),len(output_data[0]),num_hidden_layer,mean_size_hidden_layer)
+        #self.__rescaleInput(input_data)
         print(self.generalizedWeightQuery())
         if len(input_data)!=len(output_data):
             raise NeuronException
@@ -570,12 +589,26 @@ class NeuronException(Exception):
         pass
 
 def test():
+    import numpy as np
+    import seaborn as sns
+    from matplotlib import pyplot as plt
     #a = NeuralNetwork()
     #Input = [[random.random(),random.random(),random.random()] for i in range(30)]
     #Output = []
     #for input in Input:
     #    Output.append([input[0] + input[1] + input[2] + 10,input[1] + input[2] + 20,input[2] + 30])
-    #a.test_fit2(Input,Output,num_hidden_layer=2,max_step=300,error_epsilon=1e-6,mean_size_hidden_layer=5)
+    #a.test_fit2(Input,Output,num_hidden_layer=0,max_step=300,error_epsilon=1e-6,mean_size_hidden_layer=5)
+    #netOutput=[]
+    #for input in Input:
+    #    netOutput.append(a.getOutput(input)[0])
+    #npInput=np.array(Input);
+    #npRealOutput=np.array(Output)
+    #npNetOutput=np.array(netOutput)
+    #plt.figure(figsize=(8,5))
+    #plt.plot(npInput,npRealOutput, label='npRealOutput')
+    #plt.plot(npInput,npNetOutput, label='npNetOutput')
+    #plt.legend()
+    #plt.show()
     #print("Error:{}".format(a.getError(Input,Output)))
     #print("Test training data: ")
     #print("Test input:{}".format(Input[0]))
@@ -610,9 +643,7 @@ def test():
     c.test_fit2(Input,Output,max_step=500,num_hidden_layer=2,mean_size_hidden_layer=10,error_epsilon=1e-8,error=1e-2)
     print(c.generalizedWeightQuery())
     print("Error:{}".format(c.getError(Input,Output)))
-    import numpy as np
-    import seaborn as sns
-    from matplotlib import pyplot as plt
+
     #Input = [[i*0.01-5] for i in range(1000)]
     Output = []
     netOutput=[]
