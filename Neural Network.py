@@ -396,26 +396,27 @@ class NeuralNetwork():
             for layer_i in range(len(self.__Neurons)-1,0,-1):
                 for neuron_i in range(len(self.__Neurons[layer_i])):
                     GeneralizedWeight=self.__Neurons[layer_i][neuron_i].getGeneralizedWeight()
-                    for gw_i in range(len(GeneralizedWeight)-1):
-                        for sample_i in range(len(outputQuery)):
-                            if layer_i==len(self.__Neurons)-1:#adjust output layer
+                    for sample_i in range(len(outputQuery)):
+                        if layer_i==len(self.__Neurons)-1:#adjust output layer
+                            for gw_i in range(len(GeneralizedWeight)-1):
                                 GeneralizedWeight[gw_i]-=self.__stepSize(DampingFactor)*\
                                 (outputQuery[sample_i][-1][neuron_i]-output_data[sample_i][neuron_i])*\
                                 1*\
                                 outputQuery[sample_i][layer_i-1][gw_i]#Adjust weight
 
-                                GeneralizedWeight[-1]-=self.__stepSize(DampingFactor)*\
-                                (outputQuery[sample_i][-1][neuron_i]-output_data[sample_i][neuron_i])*\
-                                1*\
-                                1#Adjust thresholds
-                            else:#adjust hidden layer
+                            GeneralizedWeight[-1]-=self.__stepSize(DampingFactor)*\
+                            (outputQuery[sample_i][-1][neuron_i]-output_data[sample_i][neuron_i])*\
+                            1*\
+                            1#Adjust thresholds#Bug!
+                        else:#adjust hidden layer
+                            for gw_i in range(len(GeneralizedWeight)-1):
                                 GeneralizedWeight[gw_i]-=self.__stepSize(DampingFactor)*errorQuery[sample_i][layer_i-1][neuron_i]*\
                                 outputQuery[sample_i][layer_i][neuron_i]*(1-outputQuery[sample_i][layer_i][neuron_i])*\
                                 outputQuery[sample_i][layer_i-1][gw_i]#Adjust weights
 
-                                GeneralizedWeight[-1]-=self.__stepSize(DampingFactor)*errorQuery[sample_i][layer_i-1][neuron_i]*\
-                                outputQuery[sample_i][layer_i][neuron_i]*(1-outputQuery[sample_i][layer_i][neuron_i])*\
-                                1#Adjust thresholds
+                            GeneralizedWeight[-1]-=self.__stepSize(DampingFactor)*errorQuery[sample_i][layer_i-1][neuron_i]*\
+                            outputQuery[sample_i][layer_i][neuron_i]*(1-outputQuery[sample_i][layer_i][neuron_i])*\
+                            1#Adjust thresholds#Bug!
                     self.__Neurons[layer_i][neuron_i].adjustGeneralizedWeight(GeneralizedWeight)
             newTotalError=self.getError(input_data,output_data)
             print("Epoch {} \nDelta:{} \nNew Error:{} ".format(Epoch,newTotalError-totalError,newTotalError))
@@ -429,6 +430,46 @@ class NeuralNetwork():
                 DampingFactor+=1
                 print("DampingFactor:{}".format(DampingFactor))
                 self.adjustAll(generalizedWeightQuery)#roll back
+        print("Epoch limit reached. \nError:{} ".format(totalError))
+
+    def test_fit3(self,input_data,output_data,num_hidden_layer=None,mean_size_hidden_layer=None,data_by_rows=True,test_data_ratio=0.2,max_step=200,error_epsilon=0.002,error=0.05):
+        #batch gradient descent
+        if num_hidden_layer == None:
+            num_hidden_layer = 2
+        if mean_size_hidden_layer == None:
+            mean_size_hidden_layer = int(math.sqrt(len(input_data[0]) + len(output_data[0]))) + 5
+        self.__generate(len(input_data[0]),len(output_data[0]),num_hidden_layer,mean_size_hidden_layer)
+        #self.__rescaleInput(input_data)
+        print(self.generalizedWeightQuery())
+        if len(input_data)!=len(output_data):
+            raise NeuronException
+        #adjust input layer:
+        totalError=self.getError(input_data,output_data)
+        DampingFactor=0
+        for Epoch in range(max_step):
+            if totalError<error:
+                print("Convergence Reached. \nError:{}".format(totalError))
+                return
+            outputQuery=self.__outputQuery(input_data)
+            deltaQuery=self.__deltaQuery(outputQuery,output_data)
+            for layer_i in range(len(self.__Neurons)-1,0,-1):
+                for neuron_i in range(len(self.__Neurons[layer_i])):
+                    GeneralizedWeight=self.__Neurons[layer_i][neuron_i].getGeneralizedWeight()
+                    for sample_i in range(len(outputQuery)):
+                        for gw_i in range(len(GeneralizedWeight)-1):
+                            GeneralizedWeight[gw_i]-=self.__stepSize(DampingFactor)*deltaQuery[sample_i][layer_i-1][neuron_i]*\
+                            outputQuery[sample_i][layer_i-1][gw_i]#Adjust weights
+                        GeneralizedWeight[-1]-=self.__stepSize(DampingFactor)*deltaQuery[sample_i][layer_i-1][neuron_i]*\
+                        1#Adjust thresholds
+                    self.__Neurons[layer_i][neuron_i].adjustGeneralizedWeight(GeneralizedWeight)
+            newTotalError=self.getError(input_data,output_data)
+            print("Epoch {} \nDelta:{} \nNew Error:{} ".format(Epoch,newTotalError-totalError,newTotalError))
+            if newTotalError<=totalError:
+                if totalError-newTotalError<error_epsilon:
+                    print("Convergence reached. \nDelta:{} \nError:{} ".format(totalError-newTotalError,newTotalError))
+                    return
+                #DampingFactor=0
+            totalError=newTotalError
         print("Epoch limit reached. \nError:{} ".format(totalError))
 
     def __outputQuery(self,inputDataSet):
@@ -459,6 +500,32 @@ class NeuralNetwork():
         self.setInput(InputBackup)#restore input
         return outputQuery
 
+    def __deltaQuery(self,outputQuery,targetOutputDataset):
+        """
+        targetOutputDataset[in]:list of list
+        deltaQuery[out]: deltaQuery[sampleIndex][layerIndex][error_index]
+        returns a certain delta of a certain neuron of a certain layer of a
+        ceratain sample.
+        ATTENTION!:layerIndex starts from 0:the first NON-INPUT LAYER(e.g hidden layer or output layer)
+        """
+        deltaQuery=copy.deepcopy(outputQuery)
+        #calculate delta for output layers
+        for sample_index in range(len(outputQuery)):
+            for output_index in range(len(outputQuery[sample_index][-1])):
+                deltaQuery[sample_index][-1][output_index]=outputQuery[sample_index][-1][output_index]-targetOutputDataset[sample_index][output_index]#delta equals to error for output layers
+        #backpropogate delta
+        for sample_index in range(len(deltaQuery)):
+            for layer_index in range(len(self.__Neurons)-2):
+                for output_index in range(len(self.__Neurons[-2-layer_index])):
+                    delta=0
+                    for nl_output_index in range(len(self.__Neurons[-1-layer_index])):
+                        Weight=self.__Neurons[-1-layer_index][nl_output_index].getWeight()
+                        delta+=deltaQuery[sample_index][-1-layer_index][nl_output_index]*Weight[output_index]
+                    delta=outputQuery[sample_index][-2-layer_index][output_index]*(1-outputQuery[sample_index][-2-layer_index][output_index])*delta
+                    deltaQuery[sample_index][-2-layer_index][output_index]=delta
+            deltaQuery[sample_index].pop(0)#Structure modification. No need to calculate the delta of input layer.
+        return deltaQuery
+
     def __errorQuery(self,outputQuery,targetOutputDataset):
         """
         targetOutputDataset[in]:list of list
@@ -482,7 +549,6 @@ class NeuralNetwork():
                     errorQuery[sampleIndex][layer_index][:]=self.__backPropagateError(layer_index+1,errorQuery[sampleIndex][layer_index+1])
             errorQuery[sampleIndex].pop(0)#Structure modification. No need to calculate the error of input layer.
         return errorQuery
-
 
     def __backPropagateError(self,layerIndex,Error):
         """
@@ -511,7 +577,7 @@ class NeuralNetwork():
 
     def __stepSize(self,n):
         return 1 * math.exp(-0.5 * n)
-        #return 0.005
+        #return 0.0005
 
     def setInput(self,data):
         if len(data) == len(self.__Neurons[0]):
@@ -636,11 +702,11 @@ def test():
 #    print("Real output:{}".format(math.sin(1+1)))
 #    del b
     c = NeuralNetwork()
-    Input = [[i*0.1-5] for i in range(100)]
+    Input = [[i*0.1] for i in range(100)]
     Output = []
     for input in Input:
-        Output.append([10*math.exp(-(input[0])**2)])
-    c.test_fit2(Input,Output,max_step=500,num_hidden_layer=2,mean_size_hidden_layer=10,error_epsilon=1e-8,error=1e-2)
+        Output.append([input[0]])
+    c.test_fit2(Input,Output,max_step=500,num_hidden_layer=1,mean_size_hidden_layer=10,error_epsilon=1e-8,error=1e-2)
     print(c.generalizedWeightQuery())
     print("Error:{}".format(c.getError(Input,Output)))
 
@@ -648,7 +714,7 @@ def test():
     Output = []
     netOutput=[]
     for input in Input:
-        Output.append([10*math.exp(-(input[0])**2)])
+        Output.append([input[0]])
         netOutput.append(c.getOutput(input)[0])
     npInput=np.array(Input);
     npRealOutput=np.array(Output)
