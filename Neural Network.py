@@ -1,29 +1,13 @@
 ﻿import random
 import math
 import copy
+
 def sigmoid(inX):
     try:
-        denomiator=(1.0 + math.exp(-inX))
+        denominator=(1.0 + math.exp(-inX))
     except OverflowError:
         return 1.0-sigmoid(-inX)
-    return 1.0 / denomiator
-
-def Norm(vector):
-    """
-    vector[in] a vector represented as list/tuple or a number represented as int/float.
-    return 2-norm of the vector
-    """
-    try:
-        Norm=float(vector)
-        if Norm<0:
-            Norm=-Norm
-    except TypeError:
-        Norm=0
-        for entry in vector:
-            Norm+=entry**2
-        Norm=math.sqrt(Norm)
-    return Norm
-
+    return 1.0 / denominator
 
 
 class Neuron():
@@ -66,6 +50,7 @@ class Neuron():
         else:
             raise NeuronException
 
+
     def adjustWeight(self,weight):
         if type(self.__input) == list:#Adjust weight for hidden layers or output layer
             if len(self.__input) == len(weight):
@@ -91,6 +76,7 @@ class Neuron():
                 raise NeuronException
             self.adjustWeight(GeneralizedWeight[:-1])
             self.adjustThreshold(GeneralizedWeight[-1])
+
 
     def getWeight(self):
         if self.__type=="Input":
@@ -120,11 +106,13 @@ class Neuron():
             return
         raise NeuronException
         
+
     def getInput(self):
         if type(self.__input)==list:
             return self.__input[:]
         else:
             return self.__input
+
 
     def getOutput(self,Input=None):
         """
@@ -153,9 +141,9 @@ class Neuron():
             return float(Input) * self.__weight + self.__threshold
                 
 
-
     def __del__(self):
         print("A" if self.__type=="Hidden" else "An",self.__type,"Neuron says goodbye!")
+
 
 class NeuralNetwork():
     def __init__(self):
@@ -173,6 +161,7 @@ class NeuralNetwork():
                 self.__Neurons.append([Neuron(Type="Hidden",Input=self.__Neurons[-1][:],Weight=weight_init,Threshold=0) for j in range(mean_size_hidden_layer)])
             self.__Neurons.append([Neuron(Type="Output",Input=self.__Neurons[-1][:],Threshold=0) for i in range(Num_Output)])
             
+
     def __rescaleInput(self,samples):
         """
         Adjust the weights and thresholds in input layers to rescales the input of the network. 
@@ -216,230 +205,14 @@ class NeuralNetwork():
         return WeightQuery
 
 
-    def fit(self,input_data,output_data,num_hidden_layer=None,mean_size_hidden_layer=None,data_by_rows=True,test_data_ratio=0.2,max_step=200,node_error_epsilon=0.002,error=0.05):
-        if num_hidden_layer == None:
-            num_hidden_layer = int(math.sqrt(len(input_data[0]))) + 5
-        if mean_size_hidden_layer == None:
-            mean_size_hidden_layer = int(math.sqrt(len(input_data[0]) * len(output_data[0])))
-        self.__generate(len(input_data[0]),len(output_data[0]),num_hidden_layer,mean_size_hidden_layer)
-        #learning algorithm when there's no hidden layer
-        #for i in range(len(self.__Neurons) - 1):#Layer by layer
-        for i in range(1):#Change the Output layer Only
-            if self.getError(input_data,output_data) < error:
-                return
-            for j in range(len(self.__Neurons[-1 - i])):#Neuron by neuron/Output by output
-                NodeError = None
-                DampingFactor = 0
-                for step_count in range(max_step):#Step by step
-                    if NodeError == None:
-                        NodeError = self.getError(input_data,output_data,j)
-                        print("Error of Node {}: {}".format(j,NodeError))
-                    else:
-                        NewNodeError = self.getError(input_data,output_data,j)
-                        print("Error of Node {}: {}".format(j,NewNodeError))
-                        print("Delta of Error:",NodeError - NewNodeError)
-                        if NodeError >= NewNodeError:
-                            if NodeError - NewNodeError < node_error_epsilon:
-                                break
-                            NodeError = NewNodeError
-                        else:
-                            print("Wrong Step, rolling back.")
-                            self.__Neurons[-i - 1][j].adjustGeneralizedWeight(GeneralizedWeight)
-                            DampingFactor+=1
-                    grad = [0 for n_w in range(len(self.__Neurons[-2 - i]) + 1)]#gradient of Error with respect to generalizedweight.
-                    for k in range(len(grad)):#Calculate gradient weight by weight(generalzide)
-                        for l in range(len(output_data)):#sample by sample
-                            self.setInput(input_data[l])
-                            if k < (len(grad) - 1):#adjust kth weight
-                                grad[k] = grad[k] + (self.__Neurons[-1 - i][j].getOutput() - output_data[l][j]) * 1 * self.__Neurons[-2 - i][k].getOutput()#falty?
-                            else:#adjust threshold
-                                grad[k] = grad[k] + (self.__Neurons[-1 - i][j].getOutput() - output_data[l][j]) * 1 * 1
-                    GeneralizedWeight = self.__Neurons[-i - 1][j].getGeneralizedWeight()
-                    NewGeneralizedWeight = [0] * len(grad)
-                    for k in range(len(grad)):#Update weight by weight(Generalized)
-                        NewGeneralizedWeight[k] = GeneralizedWeight[k] - self.__stepSize(DampingFactor) * grad[k]
-                    #print("New weight:",Generalizedweight[:-1])
-                    #print("New threshold:",Generalizedweight[-1])
-                    self.__Neurons[-i - 1][j].adjustGeneralizedWeight(NewGeneralizedWeight)
-
-    def test_fit(self,input_data,output_data,num_hidden_layer=None,mean_size_hidden_layer=None,data_by_rows=True,test_data_ratio=0.2,max_step=200,node_error_epsilon=0.002,error=0.05):
-        if num_hidden_layer == None:
-            num_hidden_layer = 1
-        if mean_size_hidden_layer == None:
-            mean_size_hidden_layer = int(math.sqrt(len(input_data[0]) + len(output_data[0]))) + 5
-        self.__generate(len(input_data[0]),len(output_data[0]),num_hidden_layer,mean_size_hidden_layer)
-        if len(input_data)!=len(output_data):
-            raise NeuronException
-        #adjust input layer:
-        totalError=self.getError(input_data,output_data)
-        for Epoch in range(40):
-            print("Epoch:{}".format(Epoch))
-            if totalError < error:
-                print("Convergence reached. \nTotal rms error:{}".format(totalError))
-                return
-            #adjust weight ouf output layer
-            print("Adjusting output layer... ")
-            for output_i in range(len(self.__Neurons[-1])):
-                Error = self.getError(input_data,output_data,output_i)
-                print("Node {} Error:{}".format(output_i,Error))
-                DampingFactor = 0
-                rb_count=0#the count of consequtive rollbacks
-                for step in range(max_step):
-                    grad = [0] * (len(self.__Neurons[-2]) + 1)
-                    for grad_i in range(len(grad)):#Calculate the gradient of E with respect to vector (w_1,w_2,...,w_n,theta)
-                        for sample_i in range(len(input_data)):
-                            self.setInput(input_data[sample_i])
-                            if grad_i < len(grad)-1:
-                                grad[grad_i]=grad[grad_i]+(self.__Neurons[-1][output_i].getOutput() - output_data[sample_i][output_i]) * 1 * self.__Neurons[-2][grad_i].getOutput()
-                                #grad[k] = grad[k] + (self.__Neurons[-1 - i][j].getOutput() - output_data[l][j]) * 1 * self.__Neurons[-2 - i][k].getOutput()
-                            else:
-                                grad[grad_i]+=(self.__Neurons[-1][output_i].getOutput() - output_data[sample_i][output_i]) * 1 * 1
-                    GeneralizedWeight = self.__Neurons[-1][output_i].getGeneralizedWeight()
-                    NewGeneralizedWeight = [0] * len(GeneralizedWeight)
-                    for gw_i in range(len(NewGeneralizedWeight)):
-                        NewGeneralizedWeight[gw_i] = GeneralizedWeight[gw_i] - grad[gw_i] * self.__stepSize(DampingFactor)
-                    self.__Neurons[-1][output_i].adjustGeneralizedWeight(NewGeneralizedWeight)
-                    NewError = self.getError(input_data,output_data,output_i)
-                    if NewError <= Error:
-                        #print("New Error:{}:".format(NewError))
-                        #print("Delta of Error:{}".format(NewError - Error))
-                        if Error - NewError < node_error_epsilon:
-                            break
-                        Error = NewError
-                        rb_count=0
-                    else:
-                        #print("Delta of Node Error{}:".format(NewError - Error))
-                        #print("Over shooted.")
-                        #print("Rolling back")
-                        self.__Neurons[-1][output_i].adjustGeneralizedWeight(GeneralizedWeight)
-                        DampingFactor+=1
-                        rb_count+=1
-                        if rb_count>=6:
-                            break
-            newTotalError=self.getError(input_data,output_data)
-            print("Error:{}".format(newTotalError))
-            
-            #adjust weight ouf hidden layer
-            if len(self.__Neurons)<3:
-                continue
-            print("Adjust Hidden layer... ")
-            for hidden_i in range(len(self.__Neurons[-2])):
-                Error = self.getError(input_data,output_data)
-                print("Error:{}".format(Error))
-                DampingFactor = 0
-                rb_count=0#the count of consequtive rollbacks
-                for step in range(max_step):
-                    grad = [0] * (len(self.__Neurons[-3]) + 1)
-                    for grad_i in range(len(grad)):#Calculate the gradient of E with respect to vector (w_1,w_2,...,w_n,theta)
-                        for output_i in range(len(self.__Neurons[-1])):
-                            for sample_i in range(len(input_data)):
-                                self.setInput(input_data[sample_i])
-                                if grad_i < len(grad)-1:
-                                    grad[grad_i]=grad[grad_i]+(self.__Neurons[-1][output_i].getOutput() - 
-                                        output_data[sample_i][output_i]) * self.__Neurons[-1][output_i].getWeight()[hidden_i] * \
-                                        self.__Neurons[-2][hidden_i].getOutput()*(1-self.__Neurons[-2][hidden_i].getOutput()) * \
-                                        self.__Neurons[-3][grad_i].getOutput()
-                                        
-                                else:
-                                    grad[grad_i]=grad[grad_i]+(self.__Neurons[-1][output_i].getOutput() - 
-                                        output_data[sample_i][output_i]) * self.__Neurons[-1][output_i].getWeight()[hidden_i] * \
-                                        self.__Neurons[-2][hidden_i].getOutput()*(1-self.__Neurons[-2][hidden_i].getOutput()) * \
-                                        1
-                    GeneralizedWeight = self.__Neurons[-2][hidden_i].getGeneralizedWeight()
-                    NewGeneralizedWeight = [0] * len(GeneralizedWeight)
-                    for gw_i in range(len(NewGeneralizedWeight)):
-                        NewGeneralizedWeight[gw_i] = GeneralizedWeight[gw_i] - grad[gw_i] * self.__stepSize(DampingFactor)
-                    self.__Neurons[-2][hidden_i].adjustGeneralizedWeight(NewGeneralizedWeight)
-                    NewError = self.getError(input_data,output_data)
-                    #print("New Error{}:".format(NewError))
-                    #print("Delta of Error:{}".format(NewError - Error))
-                    if NewError <= Error:
-                        if Error - NewError < node_error_epsilon:
-                            break
-                        Error = NewError
-                        rb_count=0
-                    else:
-                        #print("Over shooted.")
-                        #print("Rolling back")
-                        self.__Neurons[-2][hidden_i].adjustGeneralizedWeight(GeneralizedWeight)
-                        DampingFactor+=1
-                        rb_count+=1
-                        if rb_count>=6:
-                            break
-                newTotalError=self.getError(input_data,output_data)
-                print("Error:{}".format(newTotalError))
-            
-            print("Delta of rms error during the epoch:{}".format(newTotalError-totalError))
-            totalError=newTotalError
-                        
-    def test_fit2(self,input_data,output_data,num_hidden_layer=None,mean_size_hidden_layer=None,data_by_rows=True,test_data_ratio=0.2,max_step=200,error_epsilon=0.002,error=0.05):
+    def fit(self,input_data,output_data,num_hidden_layer=None,mean_size_hidden_layer=None,data_by_rows=True,test_data_ratio=0.2,max_step=20000,error_epsilon=0.002,error=0.05):
         #batch gradient descent
         if num_hidden_layer == None:
             num_hidden_layer = 2
         if mean_size_hidden_layer == None:
             mean_size_hidden_layer = int(math.sqrt(len(input_data[0]) + len(output_data[0]))) + 5
         self.__generate(len(input_data[0]),len(output_data[0]),num_hidden_layer,mean_size_hidden_layer)
-        #self.__rescaleInput(input_data)
-        print(self.generalizedWeightQuery())
-        if len(input_data)!=len(output_data):
-            raise NeuronException
-        #adjust input layer:
-        totalError=self.getError(input_data,output_data)
-        DampingFactor=0
-        for Epoch in range(max_step):
-            if totalError<error:
-                print("Convergence Reached. \nError:{}".format(totalError))
-                return
-            outputQuery=self.__outputQuery(input_data)
-            errorQuery=self.__errorQuery(outputQuery,output_data)
-            generalizedWeightQuery=self.__generalizedweightQuery()#Preserve the network in case of overflow or overstep
-            for layer_i in range(len(self.__Neurons)-1,0,-1):
-                for neuron_i in range(len(self.__Neurons[layer_i])):
-                    GeneralizedWeight=self.__Neurons[layer_i][neuron_i].getGeneralizedWeight()
-                    for sample_i in range(len(outputQuery)):
-                        if layer_i==len(self.__Neurons)-1:#adjust output layer
-                            for gw_i in range(len(GeneralizedWeight)-1):
-                                GeneralizedWeight[gw_i]-=self.__stepSize(DampingFactor)*\
-                                (outputQuery[sample_i][-1][neuron_i]-output_data[sample_i][neuron_i])*\
-                                1*\
-                                outputQuery[sample_i][layer_i-1][gw_i]#Adjust weight
-
-                            GeneralizedWeight[-1]-=self.__stepSize(DampingFactor)*\
-                            (outputQuery[sample_i][-1][neuron_i]-output_data[sample_i][neuron_i])*\
-                            1*\
-                            1#Adjust thresholds
-                        else:#adjust hidden layer
-                            for gw_i in range(len(GeneralizedWeight)-1):
-                                GeneralizedWeight[gw_i]-=self.__stepSize(DampingFactor)*errorQuery[sample_i][layer_i-1][neuron_i]*\
-                                outputQuery[sample_i][layer_i][neuron_i]*(1-outputQuery[sample_i][layer_i][neuron_i])*\
-                                outputQuery[sample_i][layer_i-1][gw_i]#Adjust weights
-
-                            GeneralizedWeight[-1]-=self.__stepSize(DampingFactor)*errorQuery[sample_i][layer_i-1][neuron_i]*\
-                            outputQuery[sample_i][layer_i][neuron_i]*(1-outputQuery[sample_i][layer_i][neuron_i])*\
-                            1#Adjust thresholds#Bug!
-                    self.__Neurons[layer_i][neuron_i].adjustGeneralizedWeight(GeneralizedWeight)
-            newTotalError=self.getError(input_data,output_data)
-            print("Epoch {} \nDelta:{} \nNew Error:{} ".format(Epoch,newTotalError-totalError,newTotalError))
-            if newTotalError<=totalError:
-                if totalError-newTotalError<error_epsilon:
-                    print("Convergence reached. \nDelta:{} \nError:{} ".format(totalError-newTotalError,newTotalError))
-                    return
-                #DampingFactor=0
-                totalError=newTotalError
-            else:
-                DampingFactor+=1
-                print("DampingFactor:{}".format(DampingFactor))
-                self.adjustAll(generalizedWeightQuery)#roll back
-        print("Epoch limit reached. \nError:{} ".format(totalError))
-
-    def test_fit3(self,input_data,output_data,num_hidden_layer=None,mean_size_hidden_layer=None,data_by_rows=True,test_data_ratio=0.2,max_step=200,error_epsilon=0.002,error=0.05):
-        #batch gradient descent
-        if num_hidden_layer == None:
-            num_hidden_layer = 2
-        if mean_size_hidden_layer == None:
-            mean_size_hidden_layer = int(math.sqrt(len(input_data[0]) + len(output_data[0]))) + 5
-        self.__generate(len(input_data[0]),len(output_data[0]),num_hidden_layer,mean_size_hidden_layer)
-        print(self.generalizedWeightQuery())
+        #print(self.generalizedWeightQuery())
         if len(input_data)!=len(output_data):
             raise NeuronException
         #adjust input layer:
@@ -468,27 +241,30 @@ class NeuralNetwork():
                         1#Adjust threshold
                     self.__Neurons[layer_i][neuron_i].adjustGeneralizedWeight(GeneralizedWeight)
             newTotalError=self.getError(input_data,output_data)
-            print("Epoch {} \nDelta:{} \nNew Error:{} ".format(Epoch,newTotalError-totalError,newTotalError))
+            #print("Epoch {} \nDelta:{} \nNew Error:{} ".format(Epoch,newTotalError-totalError,newTotalError))
             errorLog.append(newTotalError)
             if newTotalError<=totalError:
                 if newTotalError<minErr:
                     minErr=newTotalError
                     finalNetworkParam=self.__generalizedweightQuery()
                 if totalError-newTotalError<error_epsilon:
-                    print("Convergence reached. \nDelta:{} \nError:{} ".format(totalError-newTotalError,newTotalError))
+                    print("Convergence reached. \nDelta:{} \nError:{} ".format(totalError-newTotalError,minErr))
+                    self.adjustAll(finalNetworkParam)
                     return errorLog
                 #DampingFactor=0
                 totalError=newTotalError
             else:
                 if newTotalError-totalError>1:#Allow error to ascend by margin 1
                     DampingFactor+=1
-                    print("DampingFactor:{}".format(DampingFactor))
+                    #print("DampingFactor:{}".format(DampingFactor))
                     self.adjustAll(generalizedWeightQuery)#roll back
                 else:
                     totalError=newTotalError
-        print("Epoch limit reached. \nError:{} ".format(totalError))
+        print("Epoch limit reached. \nError:{} ".format(minErr))
         self.adjustAll(finalNetworkParam)
         return errorLog
+
+
     def __outputQuery(self,inputDataSet):
         """
         return each output of each layer of each input data. 
@@ -517,6 +293,7 @@ class NeuralNetwork():
         self.setInput(InputBackup)#restore input
         return outputQuery
 
+
     def __deltaQuery(self,outputQuery,targetOutputDataset):
         """
         targetOutputDataset[in]:list of list
@@ -543,46 +320,6 @@ class NeuralNetwork():
             deltaQuery[sample_index].pop(0)#Structure modification. No need to calculate the delta of input layer.
         return deltaQuery
 
-    def __errorQuery(self,outputQuery,targetOutputDataset):
-        """
-        targetOutputDataset[in]:list of list
-        errorQuery[out]: errorQuery[sampleIndex][layerIndex][error_index]
-        returns a certain error of a certain neuron of a certain layer of a
-        ceratain sample.
-        ATTENTION!:layerIndex starts from 0:the first NON-INPUT LAYER(e.g hidden layer or output layer)
-        """
-        errorQuery=copy.deepcopy(outputQuery)
-        for sampleIndex in range(len(errorQuery)):
-            for layer_index in range(len(self.__Neurons)-1,0,-1):
-                if layer_index==len(self.__Neurons)-1:
-                    for output_index in range(len(self.__Neurons[-1])):
-                        #errorQuery[sampleIndex][layer_index][output_index]=sigmoid(outputQuery[sampleIndex][-1][output_index])-\
-                        #sigmoid(targetOutputDataset[sampleIndex][output_index])
-                        #        #Apply sigmoid function and calculate the hallucinated output error. 
-                        errorQuery[sampleIndex][layer_index][output_index]=(outputQuery[sampleIndex][-1][output_index]-
-                        targetOutputDataset[sampleIndex][output_index])
-                                
-                else:
-                    errorQuery[sampleIndex][layer_index][:]=self.__backPropagateError(layer_index+1,errorQuery[sampleIndex][layer_index+1])
-            errorQuery[sampleIndex].pop(0)#Structure modification. No need to calculate the error of input layer.
-        return errorQuery
-
-    def __backPropagateError(self,layerIndex,Error):
-        """
-        Estimate the error of hidden layer
-        Return the backpropogated error given the error of output of output layer
-        parameters:
-
-        """
-        if len(Error) != len(self.__Neurons[layerIndex]):
-            raise NeuronException
-        if self.__Neurons[layerIndex - 1] is self.__Neurons[0]:
-            raise NeuronException
-        bpError = [0] * len(self.__Neurons[layerIndex - 1])
-        for bp_i in range(len(bpError)):
-            for error_i in range(len(Error)):
-                bpError[bp_i]+=Error[error_i] * self.__Neurons[layerIndex][error_i].getWeight()[bp_i]
-        return bpError
 
     def __generalizedweightQuery(self):
         generalizedweightQuery=[[]for i in range(len(self.__Neurons))]
@@ -593,8 +330,9 @@ class NeuralNetwork():
 
 
     def __stepSize(self,n):
-        #return 10 * math.exp(-0.5 * n)
-        return 0.005
+        return 10 * math.exp(-0.5 * n)
+        #return 0.005
+
 
     def setInput(self,data):
         if len(data) == len(self.__Neurons[0]):
@@ -602,8 +340,11 @@ class NeuralNetwork():
                 self.__Neurons[0][i].setInput(data[i])
             return
         raise NeuronException
+
+
     def getInput(self):
         return [neuron.getInput() for neuron in self.__Neurons[0]]
+
 
     def getOutput(self,Input=None,LayerIndex=None):
         """
@@ -630,9 +371,6 @@ class NeuralNetwork():
         return ret
         
 
-
-
-    #def getMSSEError(self,InputData,OutputData,OutputIndex=None):
     def getError(self,InputData,OutputData,OutputIndex=None):
         """
         Return the rms error. 
@@ -656,92 +394,62 @@ class NeuralNetwork():
             Error = math.sqrt(Error)
         return Error
 
+
     def size(self):
         size = 0
         for layer in self.__Neurons:
             size+=len(layer)
         return size
         
+
     def __del__(self):
         for layer in self.__Neurons:
             for item in layer:
                 del item
 
+
 class NeuronException(Exception):
     def __init__(self):
         pass
+
 
 def test():
     import numpy as np
     import seaborn as sns
     from matplotlib import pyplot as plt
-    #a = NeuralNetwork()
-    #Input = [[random.random(),random.random(),random.random()] for i in range(30)]
-    #Output = []
-    #for input in Input:
-    #    Output.append([input[0] + input[1] + input[2] + 10,input[1] + input[2] + 20,input[2] + 30])
-    #a.test_fit2(Input,Output,num_hidden_layer=0,max_step=300,error_epsilon=1e-6,mean_size_hidden_layer=5)
-    #netOutput=[]
-    #for input in Input:
-    #    netOutput.append(a.getOutput(input)[0])
-    #npInput=np.array(Input);
-    #npRealOutput=np.array(Output)
-    #npNetOutput=np.array(netOutput)
-    #plt.figure(figsize=(8,5))
-    #plt.plot(npInput,npRealOutput, label='npRealOutput')
-    #plt.plot(npInput,npNetOutput, label='npNetOutput')
-    #plt.legend()
-    #plt.show()
-    #print("Error:{}".format(a.getError(Input,Output)))
-    #print("Test training data: ")
-    #print("Test input:{}".format(Input[0]))
-    #print("Network output:{}".format(a.getOutput(Input[0])))
-    #print("Real output:{}".format([Input[0][0]+Input[0][1]+Input[0][2]+10,Input[0][1]+Input[0][2]+20,Input[0][2]+30]))
-    #print("Test unseen data: ")
-    #print("Test input:{}".format([1,1,1]))
-    #print("Network output:{}".format(a.getOutput([1,1,1])))
-    #print("Real output:{}".format([13,22,31]))
-    #del a
-#    b = NeuralNetwork()
-#    Input = [[random.random(),random.random()] for i in range(200)]
-#    Output = []
-#    for input in Input:
-#        Output.append([5*math.sin(input[0]+input[1])])
-#    b.test_fit2(Input,Output,num_hidden_layer=1,max_step=300,error_epsilon=1e-8)
-#    print("Error:{}".format(b.getError(Input,Output)))
-#    print("Test training data: ")
-#    print("Test input:{}".format(Input[0]))
-#    print("Network output:{}".format(b.getOutput(Input[0])))
-#    print("Real output:{}".format(math.sin(Input[0][0]+Input[0][1])))
-#    print("Test unseen data: ")
-#    print("Test input:{}".format([1,1]))
-#    print("Network output:{}".format(b.getOutput([1,1])))
-#    print("Real output:{}".format(math.sin(1+1)))
-#    del b
-    c = NeuralNetwork()
-    Input = [[i*0.1-5] for i in range(100)]
-    Output = []
-    for input in Input:
-        Output.append([math.exp(-(input[0])**2)])
-    c.test_fit3(Input,Output,max_step=1000,num_hidden_layer=1,mean_size_hidden_layer=2,error_epsilon=1e-8,error=1e-4)
-    print(c.generalizedWeightQuery())
-    print("Error:{}".format(c.getError(Input,Output)))
 
-    #Input = [[i*0.01-5] for i in range(1000)]
-    Output = []
-    netOutput=[]
+    net = NeuralNetwork()
+    Input=[]
+    Output=[]
+    for x_2 in range(11):
+        for x_1 in range(11):
+            Input.append([x_1*0.1-0.5,x_2*0.1-0.5])
     for input in Input:
-        Output.append([math.exp(-(input[0])**2)])
-        netOutput.append(c.getOutput(input)[0])
-    npInput=np.array(Input);
-    npRealOutput=np.array(Output)
-    npNetOutput=np.array(netOutput)
+        Output.append([(input[0])**2+(input[1])**2])
+        #Output.append([10])
+    errLog=net.fit(Input,Output,max_step=100000,num_hidden_layer=1,mean_size_hidden_layer=5,error_epsilon=1e-20,error=1e-4)
+    print(net.generalizedWeightQuery())
+    print("Error:{}".format(net.getError(Input,Output)))
+
+    y=np.array(errLog)
+    x=np.array([i for i in range(len(y))])
     plt.figure(figsize=(8,5))
-    plt.plot(npInput,npRealOutput, label='npRealOutput')
-    plt.plot(npInput,npNetOutput, label='npNetOutput')
+    plt.plot(x,y, label='Emprical Risk')
     plt.legend()
     plt.show()
-    del c
+
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    netOutput=[]
+    for input in Input:
+        netOutput.append(net.getOutput(input)[0])
+    npNetOutput=np.array(netOutput)
+    ax.plot_surface(X, Y, npNetOutput.reshape(11,11), rstride=1, cstride=1, cmap='rainbow')
+    ax.scatter(np.array(Input).T[0],np.array(Input).T[1],npNetOutput,)
+    ax.set_zlabel('NetOutput') 
+    ax.set_ylabel('x_1')
+    ax.set_xlabel('x_2')
+    plt.show()
 if __name__ == "__main__":
     test()
 
