@@ -1,11 +1,9 @@
 #Neural-Network
-An implementation of neural network. 
-Work in progress. 
-###Issues: 
-* Bug huanted. 
-* Ugly structure. 
+An implementation of bp neural network. 
+Activation function: sigmoid function. 
+No 3rd-party library needed. 
+
+###Main Issues: 
 * Unsatisfatory computational cost. 
-* Data validation to be implemented. 
-* Overfitting to be dealt with. 
-* OverflowError: math range error. 
+* Ugly structure. 
 * Other possible issues. 
